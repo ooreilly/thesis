@@ -1,0 +1,70 @@
+\documentclass[varwidth=17cm]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{pgfplots.groupplots}
+\usepackage{pgfplots}
+\usepgfplotslibrary{external}
+\usepackage{times}
+\pgfplotsset{width=17cm,compat=1.6}
+\usepackage{helvet}
+\usepackage{pgfplotstable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\pgfplotsset{every axis legend/.append style={
+at={(0.98,0.60)},
+anchor=south east}}
+\definecolor{plot1}{RGB}{17,68,170}
+
+\pgfplotscreateplotcyclelist{mark-plot}{
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1},
+{plot1}
+}
+\newcommand{\thickhline}{%
+    \noalign {\ifnum 0=`}\fi \hrule height 1pt
+    \futurelet \reserved@a \@xhline
+}  
+\begin{document}
+
+%------------------------------------------
+% 			 
+%------------------------------------------
+\begin{tikzpicture}
+\begin{axis}[
+cycle list name=mark-plot,
+width=10.0cm,
+height=8.0cm,
+%axis on top,
+xlabel={$x$},
+ylabel={$t$},
+yticklabels={0.05,0.2,0.4,0.6},
+ytick={0.3,0.52,0.74,0.96},
+legend style={at={(0.45,0.75)}},
+legend cell align=left, 
+xmax = 1,
+xmin = -1,
+ymin = 0.2,
+ymax = 1.2
+]
+% side 1
+\addplot+ table[x=x1,y expr=\thisrowno{1}+0.2+0.1]  {../pgf_data/earthquake_v_1.txt};
+\addplot+ table[x=x1,y expr=\thisrowno{1}+0.4+0.12] {../pgf_data/earthquake_v_2.txt};
+\addplot+ table[x=x1,y expr=\thisrowno{1}+0.6+0.14] {../pgf_data/earthquake_v_3.txt};
+\addplot+ table[x=x1,y expr=\thisrowno{1}+0.8+0.16] {../pgf_data/earthquake_v_4.txt};
+% side 2
+\addplot+ table[x=x2,y expr=\thisrowno{3}+0.2+0.1]  {../pgf_data/earthquake_v_1.txt};
+\addplot+ table[x=x2,y expr=\thisrowno{3}+0.4+0.12] {../pgf_data/earthquake_v_2.txt};
+\addplot+ table[x=x2,y expr=\thisrowno{3}+0.6+0.14] {../pgf_data/earthquake_v_3.txt};
+\addplot+ table[x=x2,y expr=\thisrowno{3}+0.8+0.16] {../pgf_data/earthquake_v_4.txt};
+\end{axis}
+\end{tikzpicture}  
+\end{document}
