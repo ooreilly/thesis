@@ -1,4 +1,4 @@
-classdef Solid
+classdef Fluid
 
 
   properties
@@ -14,17 +14,19 @@ classdef Solid
 
     % Quadrature rules
     Pp; Pm;
+    % Difference operators
+    Dp; Dm;
     % Corner weights
     ppi, pmi;
 
     % Material properties
-    rho = 1, G = 1; c = 1; Z = 1;
+    rho = 1, mu = 1;
 
   end
 
   methods
 
-    function obj = Solid(n,order)
+    function obj = Fluid(n,order)
 
       obj.order = order;
       obj.n     = n;
@@ -46,62 +48,61 @@ classdef Solid
 
     end
 
-    % Estimates the time step using the CFL condition
-    function dt = cfl(obj)
-      dt = obj.h/obj.c;
-    end
-
     function obj = interior(obj)
 
       [obj.xp,obj.xm,Pp,Pm,Qp,Qm] = sbp_staggered(obj.order,obj.n,obj.h);
-      Dp = inv(Pp)*Qp; Dm = inv(Pm)*Qm;
+      obj.Dp = inv(Pp)*Qp; obj.Dm = inv(Pm)*Qm;
+      obj.Pp = Pp; obj.Pm = Pm;
 
-      obj.A = block_matrix(obj.sizes,obj.sizes);
-      obj.A = block_matrix_insert(obj.A,obj.sizes,obj.sizes,1,2,1/obj.rho*Dp);
-      obj.A = block_matrix_insert(obj.A,obj.sizes,obj.sizes,2,1,obj.G*Dm);
+      obj.ppi = 1/obj.Pp(1,1);
+      obj.pmi = 1/obj.Pm(1,1);
 
+      obj.A = obj.mu/obj.rho*obj.Dp*obj.Dm;
+
+
+    end
+
+    % Estimates the timestep using the CFL condition
+    function dt = cfl(obj)
+      dt = obj.h^2/(obj.mu/obj.rho);
     end
 
     function obj = sat_self(obj)
 
       r = restrictions(obj.n);
 
-      obj.ppi = 1/obj.Pp(1,1);
-      obj.pmi = 1/obj.Pm(1,1);
 
       % Left side
       n     = -1;
-      S     = -obj.ppi/obj.rho*r.e0p*r.e0m'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,1,2,S);
-      S     = -obj.pmi*obj.G*r.e0m*r.e0p'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,1,S);
+      Ln     = -obj.mu/obj.rho*obj.ppi*r.e0p*r.e0m'*obj.Dm*n;
+      Ld     = -obj.mu/obj.rho*inv(obj.Pp)*obj.Dm'*r.e0m*r.e0p'*n;
 
       % Right side
-      n     = 1;
-      S     = -obj.ppi/obj.rho*r.eNp*r.eNm'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,1,2,S);
-      S     = -obj.pmi*obj.G*r.eNm*r.eNp'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,1,S);
+      n     =  1;
+      Rn     = -obj.mu/obj.rho*obj.ppi*r.eNp*r.eNm'*obj.Dm*n;
+      Rd     = -obj.mu/obj.rho*inv(obj.Pp)*obj.Dm'*r.eNm*r.eNp'*n;
+
+
+      obj.A = obj.A + Ln + Ld + Rn + Rd;
 
     end
 
-    function obj = absorbing_bc_left(obj)
+    function obj = neumann_left(obj)
       
-      r = restrictions(obj.n);
-      n = -1;
+      r     = restrictions(obj.n);
+      n     = -1;
+      Ld    = obj.mu/obj.rho*inv(obj.Pp)*obj.Dm'*r.e0m*r.e0p'*n;
+      obj.A = obj.A + Ld;
+      
 
-      % Add sigma^*
-      S     = -0.5*obj.Z*obj.ppi/obj.rho*r.e0p*r.e0p';
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,1,1,S);
-      S     =  0.5*obj.pmi/obj.rho*r.e0p*r.e0m'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,1,2,S);
+    end
 
-      % Add v^*
-      S     = 0.5*obj.ppi/obj.rho*r.e0m*r.e0p'*n;
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,1,S);
-      S     = -0.5*obj.pmi/obj.rho/obj.Z*r.e0m*r.e0m';
-      obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,2,S);
-
+    function obj = neumann_right(obj)
+      
+      r     = restrictions(obj.n);
+      n     = 1;
+      Rd    = obj.mu/obj.rho*inv(obj.Pp)*obj.Dm'*r.eNm*r.eNp'*n;
+      obj.A = obj.A + Rd;
       
 
     end
@@ -148,9 +149,7 @@ classdef Solid
     function obj = mechanical_energy(obj)
 
       [xp,xm,obj.Pp,obj.Pm,Qp,Qm] = sbp_staggered(obj.order,obj.n,obj.h);
-      obj.H = block_matrix(obj.sizes,obj.sizes);
-      obj.H = block_matrix_insert(obj.H,obj.sizes,obj.sizes,1,1,0.5*obj.rho*obj.Pp);
-      obj.H = block_matrix_insert(obj.H,obj.sizes,obj.sizes,2,2,0.5/obj.G*obj.Pm);
+      obj.H = 0.5*obj.rho*obj.Pp;
 
     end
 
