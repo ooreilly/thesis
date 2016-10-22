@@ -109,7 +109,9 @@ classdef Solver
 
       % Discretize each side of the fault
       obj.s1 = Solid(obj.n1,order);
+      obj.s1 = obj.s1.initialize();
       obj.s2 = Solid(obj.n2,order);
+      obj.s2 = obj.s2.initialize();
     
       % Boundary conditions
       obj.s1 = obj.s1.absorbing_bc_left();

@@ -31,6 +31,10 @@ classdef Solid
       obj.h     = 1/n;
       obj.sizes = [n+1,n+2];
 
+    end
+
+    function obj = initialize(obj)
+
       obj = obj.interior();
       obj = obj.mechanical_energy();
       obj = obj.sat_self();
@@ -48,7 +52,9 @@ classdef Solid
 
     % Estimates the time step using the CFL condition
     function dt = cfl(obj)
+
       dt = obj.h/obj.c;
+
     end
 
     function obj = interior(obj)
@@ -84,6 +90,12 @@ classdef Solid
       obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,1,S);
 
     end
+    
+    function s = sat_parameter(obj)
+
+      s = obj.Z;
+
+    end
 
     function obj = absorbing_bc_left(obj)
       
@@ -101,8 +113,6 @@ classdef Solid
       obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,1,S);
       S     = -0.5*obj.pmi/obj.rho/obj.Z*r.e0m*r.e0m';
       obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,2,S);
-
-      
 
     end
     
@@ -123,7 +133,6 @@ classdef Solid
       S     = -0.5*obj.pmi/obj.rho/obj.Z*r.eNm*r.eNm';
       obj.A = block_matrix_add(obj.A,obj.sizes,obj.sizes,2,2,S);
 
-
     end
 
     % The vector returned by either coupling function is added to the right hand side 
@@ -132,17 +141,21 @@ classdef Solid
     % du1/dt = A*u1 + couple_right(vs1,ss1)
     % du2/dt = B*u2 + couple_left(vs2,ss2)
     function u = couple_left(obj,vs,ss)
+
       n                  = -1;
       u                  = zeros(sum(obj.sizes),1);
       u(1)               =   obj.ppi/obj.rho*ss*n;
       u(obj.sizes(1)+1)  =   obj.pmi*obj.G*vs*n;
+
     end
     
     function u = couple_right(obj,vs,ss)
+
       n                  = 1;
       u                  = zeros(sum(obj.sizes),1);
       u(obj.sizes(1))    =   obj.ppi/obj.rho*ss*n;
       u(end)             =   obj.pmi*obj.G*vs*n;
+
     end
 
     function obj = mechanical_energy(obj)
@@ -155,21 +168,23 @@ classdef Solid
     end
 
     function info = test_stability(obj,halt)
+
       [info.is_stable, info.is_energy_stable,info.eig_s,info.eig_es] = ...
       test_energy_stability(obj.A,obj.H,1,halt,1e-8);
+
     end
 
     function v_ = get_v(obj,u)
+
       v_ = u(1:obj.n+1);
+
     end
     
     function s_ = get_s(obj,u)
+
       s_ = u(obj.n+2:end);
+
     end
-
-
-
-
 
   end
 

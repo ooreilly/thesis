@@ -37,16 +37,13 @@ classdef Solver
   methods
 
   
-    function obj = Solver(n1,n2,order)
+    function obj = Solver(f,s)
 
-      obj = obj.initialize(n1,n2,order);
+      obj = obj.initialize(f,s);
       
-
-
     end
 
     function obj = solve(obj,CFL,tend,show_plot,frame_stride,save_at_time)
-
 
       % Time step and compute number of time steps to take
       obj.dt = CFL*min([obj.f.cfl() obj.s.cfl()]);
@@ -70,6 +67,7 @@ classdef Solver
     end
 
     function info(obj,i,t,frame_stride)
+
         if mod(i,frame_stride) ~= 0
           return;
         end
@@ -81,6 +79,7 @@ classdef Solver
     end
 
     function plot_solution(obj,show_plot,t)
+
         if ~show_plot
           return
         end
@@ -93,26 +92,30 @@ classdef Solver
         u2 = obj.u(obj.n1+1:end);
         plot(obj.f.xp-1,u1,obj.s.xp,obj.s.get_v(u2));
         drawnow;
+
     end
 
-    function obj = initialize(obj,n1,n2,order)
-
-      obj.n1 = n1;
-      obj.n2 = n2;
+    function obj = initialize(obj,f,s)
 
       % Fluid
-      obj.f = Fluid(obj.n1,order);
+      f     = f.initialize();
+      obj.f = f;
       obj.f = obj.f.neumann_left();
-      obj.f = obj.f.neumann_right();
+      %obj.f = obj.f.neumann_right();
 
       % Solid
-      obj.s = Solid(obj.n2,order);
+      s     = s.initialize();
+      obj.s = s;
+      
+      obj.n1 = sum(obj.f.sizes);
+      obj.n2 = sum(obj.s.sizes);
     
       % Boundary conditions
+      %obj.s = obj.s.absorbing_bc_left();
       obj.s = obj.s.absorbing_bc_right();
 
       % Initialize coupling
-      %obj.C = Couple(obj.s1,obj.s2,obj.friction);
+      obj.C = Couple(obj.f,obj.s);
 
       % Initial conditions
       xp = obj.f.xp;
@@ -120,7 +123,7 @@ classdef Solver
       u1 = exp(-(xp-0.5).^2/(2*a^2))';
 
       xp = obj.s.xp; xm = obj.s.xm;
-      u2 = [0*exp(-(xp-0.5).^2/(2*a^2))'; 0*xm'];
+      u2 = [exp(-(xp-0.5).^2/(2*a^2))'; 0*xm'];
       obj.u = [u1;u2];
 
       obj.n1 = length(u1);
@@ -136,11 +139,11 @@ classdef Solver
       u2 = u(obj.n1+1:end);
       u  = [obj.f.A*u1;obj.s.A*u2];
       %% Couple
-      %[vs1 vs2 ss] = obj.C.couple(u1,u2,Psi,t);
-      %u1c          = obj.s1.couple_right(vs1,ss);
-      %u2c          = obj.s2.couple_left(vs2,ss);
-      %uc = [u1c;u2c;Psi];
-      %u  = u + uc;
+      [vs ss]      = obj.C.couple(u1,u2);
+      u1c          = obj.f.couple_right(vs,ss,u1,t);
+      u2c          = obj.s.couple_left(vs,ss);
+      uc = [u1c;u2c];
+      u  = u + uc;
 
 
     end
@@ -153,11 +156,6 @@ classdef Solver
 
       u1  = obj.u(1:obj.n1); 
       u2  = obj.u(obj.n1+1:end-1);
-      Psi = obj.u(end);
-      [vs1 vs2 ss] = obj.C.couple(u1,u2,Psi,t);
-      obj.tau(end+1) = ss;
-      obj.Psi(end+1) = Psi;
-      obj.t          = t;
 
     end
     
