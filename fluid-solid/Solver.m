@@ -52,11 +52,11 @@ classdef Solver
       obj.frame_stride = frame_stride;
       f = @(x,t) obj.problem(x,t);
       t = 0;
+      obj   = save_data(obj,t,save_at_time);
       for i = 1:obj.nt
         obj.u = lsrk4(f,obj.u,t,obj.dt);
-        %obj   = save_fields(obj,t);
-        %obj   = save_data(obj,t,save_at_time);
           t   = i*obj.dt;
+        obj   = save_data(obj,t,save_at_time);
 
         plot_solution(obj,show_plot,t);
 
@@ -111,7 +111,6 @@ classdef Solver
       obj.n2 = sum(obj.s.sizes);
     
       % Boundary conditions
-      %obj.s = obj.s.absorbing_bc_left();
       obj.s = obj.s.absorbing_bc_right();
 
       % Initialize coupling
@@ -120,10 +119,11 @@ classdef Solver
       % Initial conditions
       xp = obj.f.xp;
       a = 0.1;
-      u1 = exp(-(xp-0.5).^2/(2*a^2))';
+      u1 = 0*exp(-(xp-0.5).^2/(2*a^2))';
 
       xp = obj.s.xp; xm = obj.s.xm;
-      u2 = [exp(-(xp-0.5).^2/(2*a^2))'; 0*xm'];
+      g = @(x) exp(-(x-0.5).^2/(2*a^2))';
+      u2 = [g(xp);g(xm)];
       obj.u = [u1;u2];
 
       obj.n1 = length(u1);
@@ -147,17 +147,6 @@ classdef Solver
 
 
     end
-
-    function obj = save_fields(obj,t)
-      
-      if ~obj.save_now(t);
-        return;
-      end
-
-      u1  = obj.u(1:obj.n1); 
-      u2  = obj.u(obj.n1+1:end-1);
-
-    end
     
     function obj = save_data(obj,t,save_at_times)
       if ~any(abs(t-save_at_times) < obj.dt/2)
@@ -165,13 +154,12 @@ classdef Solver
       end
 
       u1  = obj.u(1:obj.n1); 
-      u2  = obj.u(obj.n1+1:end-1);
-      Psi = obj.u(end);
+      u2  = obj.u(obj.n1+1:end);
 
-      pgf.x1  = obj.s1.xp-1;
-      pgf.v1  = obj.s1.get_v(u1);
-      pgf.x2  = obj.s2.xp;
-      pgf.v2  = obj.s2.get_v(u2);
+      pgf.x1  = obj.f.xp-1;
+      pgf.u   = u1;
+      pgf.x2  = obj.s.xp;
+      pgf.v   = obj.s.get_v(u2);
 
       filename = @(field) sprintf('%s_%s_%d',obj.name,field,obj.num);
 
